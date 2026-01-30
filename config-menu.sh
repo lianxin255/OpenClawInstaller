@@ -213,12 +213,19 @@ test_ai_connection() {
     result=$(clawdbot agent --local --to "+1234567890" --message "回复 OK" 2>&1) || true
     local exit_code=$?
     
+    # 过滤掉 Node.js 警告信息
+    result=$(echo "$result" | grep -v "ExperimentalWarning" | grep -v "at emitExperimentalWarning" | grep -v "at ModuleLoader" | grep -v "at callTranslator")
+    
     echo ""
     if [ $exit_code -eq 0 ] && ! echo "$result" | grep -qiE "error|failed|401|403|Unknown model"; then
         log_info "ClawdBot AI 测试成功！"
         echo ""
-        echo -e "  ${CYAN}AI 响应:${NC}"
-        echo "$result" | head -5 | sed 's/^/    /'
+        # 显示 AI 响应（过滤掉空行）
+        local ai_response=$(echo "$result" | grep -v "^$" | head -5)
+        if [ -n "$ai_response" ]; then
+            echo -e "  ${CYAN}AI 响应:${NC}"
+            echo "$ai_response" | sed 's/^/    /'
+        fi
         return 0
     else
         log_error "ClawdBot AI 测试失败"
@@ -2933,9 +2940,6 @@ print('Custom provider configured: ' + vars['provider_id'])
     fi
     
     if [ "$config_success" = false ]; then
-        log_warn "无法配置自定义 Provider（需要 node 或 python3）"
-    fi
-    else
         log_warn "无法配置自定义 Provider（需要 node 或 python3）"
     fi
     

@@ -1073,6 +1073,9 @@ test_api_connection() {
             exit_code=$?
         fi
         
+        # 过滤掉 Node.js 警告信息
+        result=$(echo "$result" | grep -v "ExperimentalWarning" | grep -v "at emitExperimentalWarning" | grep -v "at ModuleLoader" | grep -v "at callTranslator")
+        
         # 检查结果是否为空
         if [ -z "$result" ]; then
             result="(无输出 - 命令可能立即退出)"
@@ -1083,8 +1086,12 @@ test_api_connection() {
             test_passed=true
             echo -e "${GREEN}✓ ClawdBot AI 测试成功！${NC}"
             echo ""
-            echo -e "  ${CYAN}AI 响应:${NC}"
-            echo "$result" | head -3 | sed 's/^/    /'
+            # 显示 AI 响应（过滤掉空行）
+            local ai_response=$(echo "$result" | grep -v "^$" | head -5)
+            if [ -n "$ai_response" ]; then
+                echo -e "  ${CYAN}AI 响应:${NC}"
+                echo "$ai_response" | sed 's/^/    /'
+            fi
         else
             retry_count=$((retry_count + 1))
             echo -e "${RED}✗ ClawdBot AI 测试失败 (退出码: $exit_code)${NC}"
@@ -1390,7 +1397,7 @@ start_clawdbot_service() {
 
 # 下载并运行配置菜单
 run_config_menu() {
-    local config_menu_path="$CONFIG_DIR/config-menu.sh"
+    local config_menu_path="./config-menu.sh"
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local local_config_menu="$script_dir/config-menu.sh"
     
@@ -1400,7 +1407,7 @@ run_config_menu() {
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    # 优先使用本地的 config-menu.sh
+    # 优先使用本地的 config-menu.sh（脚本同目录）
     if [ -f "$local_config_menu" ]; then
         log_info "使用本地配置菜单: $local_config_menu"
         chmod +x "$local_config_menu"
@@ -1408,15 +1415,15 @@ run_config_menu() {
         return $?
     fi
     
-    # 检查配置目录中是否已有
+    # 检查当前目录是否已有
     if [ -f "$config_menu_path" ]; then
-        log_info "使用已下载的配置菜单"
+        log_info "使用已下载的配置菜单: $config_menu_path"
         chmod +x "$config_menu_path"
         bash "$config_menu_path"
         return $?
     fi
     
-    # 从 GitHub 下载
+    # 从 GitHub 下载到当前目录
     log_step "从 GitHub 下载配置菜单..."
     if curl -fsSL "$GITHUB_RAW_URL/config-menu.sh" -o "$config_menu_path"; then
         chmod +x "$config_menu_path"
@@ -1472,9 +1479,9 @@ main() {
     else
         echo ""
         echo -e "${CYAN}稍后可以通过以下命令打开配置菜单:${NC}"
-        echo "  bash $CONFIG_DIR/config-menu.sh"
+        echo "  bash ./config-menu.sh"
         echo "  # 或从 GitHub 下载运行:"
-        echo "  curl -fsSL $GITHUB_RAW_URL/config-menu.sh | bash"
+        echo "  curl -fsSL $GITHUB_RAW_URL/config-menu.sh -o config-menu.sh && bash config-menu.sh"
         echo ""
     fi
     
